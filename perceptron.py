@@ -11,14 +11,23 @@ elements (x_i) to be "positive" or "negative".
 import numpy as np
 import random
 from scipy import stats
-import math
+from math import exp
 import multiprocessing as mp
 import matplotlib.pyplot as plt
 import time 
 
 
+
+def fMSE(prediction, real):
+    if type(prediction) == float:
+        return (prediction-real)**2
+    else:
+        SE = list(map(lambda x, y: (x-y)**2, prediction, real))
+        MSE = sum(SE)/len(SE)
+        return MSE
+
+
 def compute(x, w, i, step):
-    exp = math.exp
     logistic = lambda r : 1/(1+exp(-r))
     d_logistic = lambda x_i, w_i : (x_i * exp(-(x_i * w_i)))/(1-exp(-(x_i * w_i)))**2
     gradient_descent = lambda step, t, y, g: (1/step) * (t-y) * g
@@ -44,17 +53,24 @@ def epoch(mtX, w):
 
     """
     print('epoch commences...')
-    pool = mp.Pool(mp.cpu_count())
-    
     start = time.time()
     X = mtX.copy()
     np.random.shuffle(X)
     step = 1
+    ax = plt.subplot(1,1,1)
+    prediction = 1/(1+exp(-(X[0, :-1].dot(w))))
+    real = X[0,-1]
+    ax.scatter(step, fMSE(prediction, real))
     for x in X:
-        w = np.array(list(pool.map(compute, x, w, list(range(10)), [step]*10)))
+        args = [*zip([x]*10, [w]*10, list(range(10)), [step]*10)]
+        pool = mp.Pool(10)
+        w = np.array(list(pool.starmap(compute, args)))
+        pool.close()
         step += 1
+        prediction = 1/(1+exp(-(x[:-1].dot(w))))
+        real = x[-1]
+        ax.plot(step, fMSE(prediction, real))
     end = time.time()
-    pool.close()
     print('completed! t:', end-start,'\n')
     return w
     
@@ -87,7 +103,6 @@ class perceptron:
         
     def test(self, inds, w):
         print('neuron starts testing...\n')
-        exp = math.exp
         B = self.data
         r_ind = np.arange(1, B.shape[0])
         ind = r_ind[np.in1d(r_ind, inds, invert=True)]
@@ -96,42 +111,28 @@ class perceptron:
         real = Y[:, -1]
         print('prediction:', prediction[0:10])
         print('real:', real[0:10])
-        SE = list(map(lambda x, y: (x-y)**2, prediction, real))
-        MSE = sum(SE)/len(SE)
+        MSE = fMSE(prediction, real)
         print('done!')
         return MSE
         
-
-# creating random data
-n = 1000000
-B = np.random.randint(0, 2, size=(n,10))
-B = np.where(B == 0, -1, B)
-A = np.zeros((n, 11))
-A[:, :-1] = B
-A[:,10] = [1 if sum(A[i,:]) >= 0 else 0 for i in range(A.shape[0])]
-inds = np.random.randint(0, A.shape[0], size=int(A.shape[0] * 0.7))
-
-# initialise perceptron object
-neuron = perceptron(A)
-weights = neuron.learn(inds, epochs=10)
-errors = [neuron.test(inds, m) for m in weights]
-eps = list(range(1, 12))
-
-plt.scatter(eps, errors)
-plt.show()
-
-start = time.time()
-weights = neuron.learn(inds)
-end = time.time()
-print(end - start)
-
-start = time.time()
-error = neuron.test(inds, weights)
-end = time.time()
-print(end - start)
-
-
-print('hello world')
+if __name__ == '__main__':    
+    # creating random data
+    n = 1000000
+    B = np.random.randint(0, 2, size=(n,10))
+    B = np.where(B == 0, -1, B)
+    A = np.zeros((n, 11))
+    A[:, :-1] = B
+    A[:,10] = [1 if sum(A[i,:]) >= 0 else 0 for i in range(A.shape[0])]
+    inds = np.random.randint(0, A.shape[0], size=int(A.shape[0] * 0.7))
+    
+    # initialise perceptron object
+    neuron = perceptron(A)
+    weights = neuron.learn(inds, epochs=10)
+    errors = [neuron.test(inds, m) for m in weights]
+    eps = list(range(1, 12))
+    
+    plt.scatter(eps, errors)
+    plt.show()
 
 
 
