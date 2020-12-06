@@ -12,7 +12,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-def ifelse(conditional, t=1, f=0):
+def ifelse(conditional, t=1, f=-1):
     if conditional == True:
         return t
     else:
@@ -31,6 +31,14 @@ def fMSE(prediction, real):
         SE = list(map(lambda x, y: (x-y)**2, prediction, real))
         MSE = sum(SE)/len(SE)
         return MSE
+    
+def prod(*x):
+    res = 1    
+    for x_i in x:
+        for y_i in x_i:
+            res *= y_i
+    return res
+
 
 
 def epoch(mtX, w):
@@ -52,9 +60,9 @@ def epoch(mtX, w):
     step = 1
     for x in X:
         for i, x_i in enumerate(x[:-1]):
-            y = ifelse(x[:-1].dot(w) > 0)
+            y = ifelse(prod(x[:-1], w) > 0)
             t = x[-1]
-            g = x[i]
+            g = prod(x[:-1], w[np.array(list(range(11))) != i])
             
             w[i] = w[i] + gradient_descent(step, t, y, g)
             
@@ -100,7 +108,7 @@ class perceptron:
         C = B[ind, :].copy()
         Y = np.ones((C.shape[0], C.shape[1]+1))*-1
         Y[:, 1:] = C
-        prediction = list(map(lambda x, w: ifelse(x.dot(w) > 0), Y[:,:-1], [w for x in range(Y.shape[0])]))
+        prediction = list(map(lambda x, w: ifelse(prod(x, w) > 0), Y[:,:-1], [w for x in range(Y.shape[0])]))
         real = Y[:, -1]
         #print('prediction:', prediction[0:10])
         #print('real:', real[0:10])
@@ -115,11 +123,11 @@ if __name__ == '__main__':
     B = np.where(B == 0, -1, B)
     A = np.zeros((n, 11))
     A[:, :-1] = B
-    A[:,10] = [1 if sum(A[i,:]) >= 0 else 0 for i in range(A.shape[0])]
+    A[:,10] = [1 if sum(A[i,:]) > 0 else -1 for i in range(A.shape[0])]
     inds = np.random.randint(0, A.shape[0], size=int(A.shape[0] * 0.7))
     
     # initialise perceptron object
-    p = 10
+    p = 100
     neuron = perceptron(A)
     weights = neuron.learn(inds, epochs=p)
     errors = [neuron.test(inds, m) for m in weights]

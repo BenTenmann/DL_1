@@ -2,7 +2,8 @@ library(tidyverse)
 library(dplyr)
 library(ggplot2)
 
-read.csv("/Users/benjamintenmann/Desktop/CompBio/Assignments/DL_1/ep_df.csv")%>%
+# plotting MSE v epoch
+read.csv("/Users/benjamintenmann/Desktop/CompBio/Assignments/DL_1/perceptron/ep_df.csv")%>%
   ggplot(., aes(x=epochs, y=error))+
   geom_path(colour = "steelblue")+
   theme_minimal()+

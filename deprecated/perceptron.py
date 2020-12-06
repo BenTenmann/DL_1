@@ -12,12 +12,6 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-def ifelse(conditional, t=1, f=0):
-    if conditional == True:
-        return t
-    else:
-        return f
-
 def printDone(i, ep):
     if (i+1) % (ep*0.1) == 0:
         frac = int((i+1)/(ep*0.1))
@@ -45,16 +39,19 @@ def epoch(mtX, w):
     w : Updated weights vector.
 
     """
+    exp = math.exp
     X = mtX.copy()
     np.random.shuffle(X)
     
+    logistic = lambda r : 1/(1+exp(-r))
+    d_logistic = lambda x_i, w_i : (x_i * exp(-(x_i * w_i)))/(1-exp(-(x_i * w_i)))**2
     gradient_descent = lambda step, t, y, g: (1/step) * (t-y) * g
     step = 1
     for x in X:
         for i, x_i in enumerate(x[:-1]):
-            y = ifelse(x[:-1].dot(w) > 0)
+            y = logistic(x[:-1].dot(w))
             t = x[-1]
-            g = x[i]
+            g = d_logistic(x[i], w[i])
             
             w[i] = w[i] + gradient_descent(step, t, y, g)
             
@@ -78,11 +75,9 @@ class perceptron:
     def learn(self, inds, epochs = 1000):
         print('neuron starts learning...\n')
         B = self.data
-        C = B[inds, :]
-        X = np.ones((C.shape[0], C.shape[1]+1))*-1
-        X[:, 1:] = C
+        X = B[inds, :]
         
-        W = w_n = np.ones(11)
+        W = w_n = np.ones(10)
         n_epochs = range(epochs)
         print('progress:\n[*          ]')
         for ep in n_epochs:
@@ -93,14 +88,13 @@ class perceptron:
         return W # return weight matrix --- rows are different epochs
         
     def test(self, inds, w):
+        exp = math.exp
         print('neuron starts testing...\n')
         B = self.data
         r_ind = np.arange(1, B.shape[0])
         ind = r_ind[np.in1d(r_ind, inds, invert=True)]
-        C = B[ind, :].copy()
-        Y = np.ones((C.shape[0], C.shape[1]+1))*-1
-        Y[:, 1:] = C
-        prediction = list(map(lambda x, w: ifelse(x.dot(w) > 0), Y[:,:-1], [w for x in range(Y.shape[0])]))
+        Y = B[ind, :].copy()
+        prediction = list(map(lambda x, w : 1/(1+exp(-(x.dot(w)))), Y[:,:-1], [w for x in range(Y.shape[0])]))
         real = Y[:, -1]
         #print('prediction:', prediction[0:10])
         #print('real:', real[0:10])
@@ -119,7 +113,7 @@ if __name__ == '__main__':
     inds = np.random.randint(0, A.shape[0], size=int(A.shape[0] * 0.7))
     
     # initialise perceptron object
-    p = 10
+    p = 100
     neuron = perceptron(A)
     weights = neuron.learn(inds, epochs=p)
     errors = [neuron.test(inds, m) for m in weights]
