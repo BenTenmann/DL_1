@@ -16,6 +16,21 @@ import multiprocessing as mp
 import matplotlib.pyplot as plt
 import time 
 
+
+def compute(x, w, i, step):
+    exp = math.exp
+    logistic = lambda r : 1/(1+exp(-r))
+    d_logistic = lambda x_i, w_i : (x_i * exp(-(x_i * w_i)))/(1-exp(-(x_i * w_i)))**2
+    gradient_descent = lambda step, t, y, g: (1/step) * (t-y) * g
+    
+    y = logistic(x[:-1].dot(w))
+    t = x[-1]
+    g = d_logistic(x[i], w[i])
+    
+    w[i] = w[i] + gradient_descent(step, t, y, g)
+    return w[i]
+
+
 def epoch(mtX, w):
     """
     Parameters
@@ -29,23 +44,17 @@ def epoch(mtX, w):
 
     """
     print('epoch commences...')
+    pool = mp.Pool(mp.cpu_count())
+    
     start = time.time()
-    exp = math.exp
     X = mtX.copy()
     np.random.shuffle(X)
-    logistic = lambda r : 1/(1+exp(-r))
-    d_logistic = lambda x_i, w_i : (x_i * exp(-(x_i * w_i)))/(1-exp(-(x_i * w_i)))**2
-    gradient_descent = lambda step, t, y, g: (1/step) * (t-y) * g
     step = 1
     for x in X:
-        for i, x_i in enumerate(x[:-1]):
-            y = logistic(x[:-1].dot(w))
-            t = x[-1]
-            g = d_logistic(x_i, w[i])
-            
-            w[i] = w[i] - gradient_descent(step, t, y, g)     
+        w = np.array(list(pool.map(compute, x, w, list(range(10)), [step]*10)))
         step += 1
     end = time.time()
+    pool.close()
     print('completed! t:', end-start,'\n')
     return w
     
@@ -80,13 +89,14 @@ class perceptron:
         print('neuron starts testing...\n')
         exp = math.exp
         B = self.data
-        r_ind = np.arange(1, B.shape[1]+1)
-        ind = r_ind[r_ind != inds]
+        r_ind = np.arange(1, B.shape[0])
+        ind = r_ind[np.in1d(r_ind, inds, invert=True)]
         Y = B[ind, :].copy()
         prediction = list(map(lambda x, w : 1/(1+exp(-(x.dot(w)))), Y[:,:-1], [w for x in range(Y.shape[0])]))
         real = Y[:, -1]
-        
-        SE = list(map(lambda x, y: (x-y)**2), prediction, real)
+        print('prediction:', prediction[0:10])
+        print('real:', real[0:10])
+        SE = list(map(lambda x, y: (x-y)**2, prediction, real))
         MSE = sum(SE)/len(SE)
         print('done!')
         return MSE
@@ -103,6 +113,12 @@ inds = np.random.randint(0, A.shape[0], size=int(A.shape[0] * 0.7))
 
 # initialise perceptron object
 neuron = perceptron(A)
+weights = neuron.learn(inds, epochs=10)
+errors = [neuron.test(inds, m) for m in weights]
+eps = list(range(1, 12))
+
+plt.scatter(eps, errors)
+plt.show()
 
 start = time.time()
 weights = neuron.learn(inds)
@@ -113,6 +129,9 @@ start = time.time()
 error = neuron.test(inds, weights)
 end = time.time()
 print(end - start)
+
+
+print('hello world')
 
 
 
