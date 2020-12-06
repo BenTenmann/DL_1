@@ -14,8 +14,43 @@ from scipy import stats
 import math
 import multiprocessing as mp
 import matplotlib.pyplot as plt
+import time 
 
-class perceptron(A):
+def epoch(mtX, w):
+    """
+    Parameters
+    ----------
+    mtX : The train dataset matrix subset.
+    w : The model weights vector.
+
+    Returns
+    -------
+    w : Updated weights vector.
+
+    """
+    print('epoch commences...')
+    start = time.time()
+    exp = math.exp
+    X = mtX.copy()
+    np.random.shuffle(X)
+    logistic = lambda r : 1/(1+exp(-r))
+    d_logistic = lambda x_i, w_i : (x_i * exp(-(x_i * w_i)))/(1-exp(-(x_i * w_i)))**2
+    gradient_descent = lambda step, t, y, g: (1/step) * (t-y) * g
+    step = 1
+    for x in X:
+        for i, x_i in enumerate(x[:-1]):
+            y = logistic(x[:-1].dot(w))
+            t = x[-1]
+            g = d_logistic(x_i, w[i])
+            
+            w[i] = w[i] - gradient_descent(step, t, y, g)     
+        step += 1
+    end = time.time()
+    print('completed! t:', end-start,'\n')
+    return w
+    
+
+class perceptron:
     """
     The perceptron: a simple a neuron taking an input vector of ten length = 10.
     Each element in the vector is either -1 or 1, except the last value is either 
@@ -26,29 +61,35 @@ class perceptron(A):
     """
     
     def __init__(self, A):
-        self.train_test = A[np.random.randint(0, A.shape[0]+1, size=int(A.shape[0] * 0.7)), :]
+        self.data = A
         
-    def train():
-        w = np.ones(10)
-        X = self.train_test
+    def learn(self, inds, epochs = 1000):
+        print('neuron starts learning...\n\n')
+        B = self.data
+        X = B[inds, :]
+        
+        W = w_n = np.ones(10)
+        n_epochs = range(epochs)
+        for ep in n_epochs:
+            w_n = epoch(X, w_n)
+            W = np.vstack([W, w_n])
+        print('done!\n\n')
+        return W # return weight matrix --- rows are different epochs
+        
+    def test(self, inds, w):
+        print('neuron starts testing...\n')
         exp = math.exp
+        B = self.data
+        r_ind = np.arange(1, B.shape[1]+1)
+        ind = r_ind[r_ind != inds]
+        Y = B[ind, :].copy()
+        prediction = list(map(lambda x, w : 1/(1+exp(-(x.dot(w)))), Y[:,:-1], [w for x in range(Y.shape[0])]))
+        real = Y[:, -1]
         
-        logistic = lambda r : 1/(1+exp(-r))
-        d_logistic = lambda x_i, w_i : (x_i * exp(-(x_i * w_i)))/(1-exp(-(x_i * w_i)))**2
-        gradient_descent = lambda step, t, y, g: (1/step) * (t-y) * g
-        step = 1
-        for x in X:
-            for i, x_i in enumerate(x[:-1]):
-                y = logistic(x[:-1].dot(w))
-                t = x[-1]
-                g = d_logistic(x_i, w[i])
-                
-                w[i] = w[i] - gradient_descent(step, t, y, g) 
-                
-            step += 1
-        
-    
-    def test():
+        SE = list(map(lambda x, y: (x-y)**2), prediction, real)
+        MSE = sum(SE)/len(SE)
+        print('done!')
+        return MSE
         
 
 # creating random data
@@ -58,25 +99,20 @@ B = np.where(B == 0, -1, B)
 A = np.zeros((n, 11))
 A[:, :-1] = B
 A[:,10] = [1 if sum(A[i,:]) >= 0 else 0 for i in range(A.shape[0])]
-
-
-plt.scatter(res_x, res_y)
-plt.show()
+inds = np.random.randint(0, A.shape[0], size=int(A.shape[0] * 0.7))
 
 # initialise perceptron object
 neuron = perceptron(A)
 
-
-
-import time 
-
 start = time.time()
-
+weights = neuron.learn(inds)
 end = time.time()
 print(end - start)
 
 start = time.time()
-
+error = neuron.test(inds, weights)
 end = time.time()
 print(end - start)
+
+
 
